@@ -86,6 +86,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 禁用冗余的第三方库日志
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 # 存储用户对话历史
 user_histories = {}
 

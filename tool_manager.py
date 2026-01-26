@@ -413,10 +413,13 @@ class ToolManager:
             return "\n\n---\n\n".join(output)
         
         except requests.exceptions.Timeout:
+            print(f"❌ 搜索超时 | query={query}")
             return "❌ 搜索超时"
         except requests.exceptions.RequestException as e:
+            print(f"❌ 搜索请求失败 | query={query} | error={str(e)}")
             return f"❌ 搜索请求失败: {str(e)}"
         except Exception as e:
+            print(f"❌ 搜索失败 | query={query} | error={str(e)}")
             return f"❌ 搜索失败: {str(e)}"
     
     def _run_python(self, code: str) -> str:
