@@ -343,14 +343,24 @@ class ToolManager:
     
     # ========== 内置工具实现 ==========
     
+    _last_search_time = 0  # 上次搜索时间戳
+    
     def _web_search(self, query: str) -> str:
         """联网搜索（使用 Brave Search API）"""
+        import time
+        
         try:
             import requests
             from config import BRAVE_API_KEY
             
             if not BRAVE_API_KEY:
                 return "❌ 搜索功能需要配置 BRAVE_API_KEY"
+            
+            # 频率限制：确保距离上次搜索至少 1.2 秒
+            now = time.time()
+            elapsed = now - ToolManager._last_search_time
+            if elapsed < 1.2:
+                time.sleep(1.2 - elapsed)
             
             headers = {
                 "Accept": "application/json",
@@ -364,13 +374,28 @@ class ToolManager:
                 "search_lang": "zh-hans"  # 优先中文
             }
             
-            response = requests.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                headers=headers,
-                params=params,
-                timeout=15
-            )
-            response.raise_for_status()
+            # 最多重试2次
+            for attempt in range(2):
+                response = requests.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    headers=headers,
+                    params=params,
+                    timeout=15
+                )
+                
+                ToolManager._last_search_time = time.time()
+                
+                if response.status_code == 429:
+                    # 被限流，等待后重试
+                    if attempt < 1:
+                        time.sleep(2)
+                        continue
+                    else:
+                        return "❌ 搜索请求过于频繁，请稍后再试"
+                
+                response.raise_for_status()
+                break
+            
             data = response.json()
             
             results = data.get("web", {}).get("results", [])
