@@ -273,35 +273,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 发送处理中提示
     thinking_message = await update.message.reply_text("🤔 思考中...")
     
-    # 工具执行状态（用于实时更新消息）
-    tool_status = {"current": "思考中..."}
+    # 获取当前事件循环（用于线程安全调度）
+    loop = asyncio.get_event_loop()
     
     def on_tool_start(name, params):
-        """工具开始执行时的回调"""
+        """工具开始执行时的回调（从线程中调用）"""
         # 生成简短的参数摘要
         if name == "run_python":
-            # 代码太长，只显示前50字符
-            code = str(params.get("code", ""))[:50]
-            param_summary = f"`{code}...`"
+            code = str(params.get("code", ""))[:50].replace('\n', ' ')
+            param_summary = code + "..."
         elif name == "web_search":
-            param_summary = f"`{params.get('query', '')}`"
+            param_summary = params.get('query', '')
         else:
             param_summary = str(params)[:50]
         
-        tool_status["current"] = f"🔧 {name}: {param_summary}"
+        status_text = f"🔧 {name}: {param_summary}"
         
-        # 使用 asyncio 在事件循环中更新消息
-        asyncio.create_task(
-            thinking_message.edit_text(tool_status["current"], parse_mode='Markdown')
-        )
+        # 使用线程安全的方式调度异步任务
+        async def update_message():
+            try:
+                await thinking_message.edit_text(status_text)
+            except:
+                pass
+        
+        loop.call_soon_threadsafe(lambda: asyncio.create_task(update_message()))
     
     try:
         # 获取历史
         history = user_histories.get(user_id, [])
         
-        # 调用 Agent（传入工具状态回调）
+        # 调用 Agent（在线程池中执行，传入工具状态回调）
         logger.info(f"用户 {user_id}: {user_message[:50]}...")
-        response, new_history = await asyncio.get_event_loop().run_in_executor(
+        response, new_history = await loop.run_in_executor(
             None, 
             lambda: chat(user_message, history, on_tool_start=on_tool_start)
         )
