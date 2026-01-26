@@ -10,6 +10,35 @@ from config import CLAUDE_API_KEY, CLAUDE_MODEL
 # 初始化 Claude 客户端
 client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 
+# 可用模型列表
+AVAILABLE_MODELS = {
+    "sonnet": "claude-sonnet-4-20250514",
+    "opus": "claude-opus-4-20250514",
+}
+
+# 当前使用的模型（默认从配置读取）
+_current_model = CLAUDE_MODEL
+
+def get_current_model() -> str:
+    """获取当前模型"""
+    return _current_model
+
+def set_model(model_name: str) -> str:
+    """切换模型，返回结果消息"""
+    global _current_model
+    
+    model_name = model_name.lower()
+    
+    if model_name in AVAILABLE_MODELS:
+        _current_model = AVAILABLE_MODELS[model_name]
+        return f"✅ 已切换到 {model_name.upper()} ({_current_model})"
+    elif model_name in AVAILABLE_MODELS.values():
+        _current_model = model_name
+        return f"✅ 已切换到 {_current_model}"
+    else:
+        available = ", ".join(AVAILABLE_MODELS.keys())
+        return f"❌ 未知模型。可用模型: {available}"
+
 # 系统提示词（基础部分）
 SYSTEM_PROMPT_BASE = """你是一个强大的、可自我进化的 AI 助理。
 
@@ -116,7 +145,7 @@ def get_system_prompt() -> str:
         return SYSTEM_PROMPT_BASE
 
 
-def chat(user_message, history: list = None, max_iterations: int = 10) -> tuple[str, list]:
+def chat(user_message, history: list = None, max_iterations: int = 20) -> tuple[str, list]:
     """
     与 Claude 对话，自动处理工具调用
     
@@ -148,7 +177,7 @@ def chat(user_message, history: list = None, max_iterations: int = 10) -> tuple[
         try:
             # 调用 Claude API（每次获取最新的 system prompt，包含记忆）
             response = client.messages.create(
-                model=CLAUDE_MODEL,
+                model=_current_model,
                 max_tokens=8192,
                 system=get_system_prompt(),
                 tools=tool_manager.get_schemas(),
@@ -220,7 +249,7 @@ def chat(user_message, history: list = None, max_iterations: int = 10) -> tuple[
     # 超过最大迭代次数，让 AI 总结问题
     try:
         summary_response = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_current_model,
             max_tokens=1024,
             system="用中文简洁总结",
             messages=[{

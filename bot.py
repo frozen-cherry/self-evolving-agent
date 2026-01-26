@@ -18,7 +18,7 @@ from telegram.ext import (
 )
 from telegram.constants import ChatAction
 
-from agent import chat
+from agent import chat, get_current_model, set_model, AVAILABLE_MODELS
 from tool_manager import tool_manager
 from config import TELEGRAM_TOKEN, ALLOWED_USERS, MAX_HISTORY_ROUNDS
 
@@ -116,6 +116,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 **命令：**
 /reset - 重置对话历史
 /tools - 查看当前所有工具
+/model - 切换模型 (sonnet/opus)
 /help - 显示帮助信息
 
 直接发消息给我就可以开始对话！"""
@@ -142,6 +143,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • /start - 显示欢迎信息
 • /reset - 清除对话历史
 • /tools - 列出所有可用工具
+• /model - 切换模型 (sonnet/opus)
 • /reload - 重新加载自定义工具
 • /help - 显示此帮助
 
@@ -179,6 +181,29 @@ async def reload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     result = tool_manager.reload_tools()
     await update.message.reply_text(result)
+
+
+async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /model 命令 - 切换或查看当前模型"""
+    if not check_user_allowed(update.effective_user.id):
+        return
+    
+    args = context.args
+    
+    if not args:
+        # 显示当前模型和可用选项
+        current = get_current_model()
+        available = ", ".join(AVAILABLE_MODELS.keys())
+        await update.message.reply_text(
+            f"🤖 **当前模型:** `{current}`\n\n"
+            f"**可用模型:** {available}\n\n"
+            f"**切换方法:** `/model sonnet` 或 `/model opus`",
+            parse_mode='Markdown'
+        )
+    else:
+        # 切换模型
+        result = set_model(args[0])
+        await update.message.reply_text(result)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -403,6 +428,7 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("reset", reset_command))
     application.add_handler(CommandHandler("tools", tools_command))
+    application.add_handler(CommandHandler("model", model_command))
     application.add_handler(CommandHandler("reload", reload_command))
     
     # 添加消息处理器
