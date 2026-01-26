@@ -15,6 +15,10 @@ CLAUDE_MODEL = "claude-sonnet-4-20250514"
 # 如果不需要语音功能，留空即可
 OPENAI_API_KEY = ""
 
+# Brave Search API Key (用于联网搜索)
+# 从 https://brave.com/search/api/ 获取，每月免费 2000 次
+BRAVE_API_KEY = ""
+
 # 可选：允许使用 Bot 的 Telegram 用户 ID 列表
 # 留空则允许所有人使用
 # 获取你的 ID：给 @userinfobot 发消息

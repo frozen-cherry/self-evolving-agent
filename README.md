@@ -29,6 +29,7 @@ cp config.example.py config.py
 ```python
 TELEGRAM_TOKEN = "你的Telegram Bot Token"
 CLAUDE_API_KEY = "你的Claude API Key"
+BRAVE_API_KEY = "你的Brave Search API Key"  # https://brave.com/search/api/
 
 # 可选：限制允许使用的用户
 ALLOWED_USERS = []  # 空列表表示允许所有人

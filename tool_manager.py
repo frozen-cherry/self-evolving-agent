@@ -344,24 +344,53 @@ class ToolManager:
     # ========== 内置工具实现 ==========
     
     def _web_search(self, query: str) -> str:
-        """联网搜索"""
+        """联网搜索（使用 Brave Search API）"""
         try:
-            from duckduckgo_search import DDGS
+            import requests
+            from config import BRAVE_API_KEY
             
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=5))
+            if not BRAVE_API_KEY:
+                return "❌ 搜索功能需要配置 BRAVE_API_KEY"
+            
+            headers = {
+                "Accept": "application/json",
+                "X-Subscription-Token": BRAVE_API_KEY
+            }
+            
+            params = {
+                "q": query,
+                "count": 8,  # 返回8条结果
+                "text_decorations": False,
+                "search_lang": "zh-hans"  # 优先中文
+            }
+            
+            response = requests.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers=headers,
+                params=params,
+                timeout=15
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            results = data.get("web", {}).get("results", [])
             
             if not results:
                 return "没有找到相关结果"
             
             output = []
-            for r in results:
-                output.append(f"**{r['title']}**\n{r['body']}\n链接: {r['href']}")
+            for i, r in enumerate(results, 1):
+                title = r.get("title", "无标题")
+                description = r.get("description", "无描述")
+                url = r.get("url", "")
+                output.append(f"[{i}] **{title}**\n{description}\n链接: {url}")
             
             return "\n\n---\n\n".join(output)
         
-        except ImportError:
-            return "❌ 搜索功能需要安装: pip install duckduckgo-search"
+        except requests.exceptions.Timeout:
+            return "❌ 搜索超时"
+        except requests.exceptions.RequestException as e:
+            return f"❌ 搜索请求失败: {str(e)}"
         except Exception as e:
             return f"❌ 搜索失败: {str(e)}"
     
