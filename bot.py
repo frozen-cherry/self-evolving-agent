@@ -206,6 +206,50 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(result)
 
 
+async def update_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /update 命令 - git pull 并重启 Bot"""
+    if not check_user_allowed(update.effective_user.id):
+        return
+    
+    import subprocess
+    import sys
+    
+    await update.message.reply_text("🔄 正在检查更新...")
+    
+    try:
+        # 执行 git pull
+        result = subprocess.run(
+            ['git', 'pull'],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            timeout=30
+        )
+        
+        output = result.stdout.strip()
+        
+        if "Already up to date" in output or "Already up-to-date" in output:
+            await update.message.reply_text("✅ 已是最新版本，无需更新")
+            return
+        
+        # 有更新，发送更新信息并重启
+        await update.message.reply_text(
+            f"📥 更新完成！\n```\n{output[:500]}\n```\n\n🔄 正在重启...",
+            parse_mode='Markdown'
+        )
+        
+        # 等待消息发送
+        await asyncio.sleep(1)
+        
+        # 原地重启进程
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+        
+    except subprocess.TimeoutExpired:
+        await update.message.reply_text("❌ git pull 超时")
+    except Exception as e:
+        await update.message.reply_text(f"❌ 更新失败: {str(e)}")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理普通文本消息"""
     user_id = update.effective_user.id
@@ -429,6 +473,7 @@ def main():
     application.add_handler(CommandHandler("reset", reset_command))
     application.add_handler(CommandHandler("tools", tools_command))
     application.add_handler(CommandHandler("model", model_command))
+    application.add_handler(CommandHandler("update", update_command))
     application.add_handler(CommandHandler("reload", reload_command))
     
     # 添加消息处理器
