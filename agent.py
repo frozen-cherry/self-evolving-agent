@@ -145,7 +145,7 @@ def get_system_prompt() -> str:
         return SYSTEM_PROMPT_BASE
 
 
-def chat(user_message, history: list = None, max_iterations: int = 20) -> tuple[str, list]:
+def chat(user_message, history: list = None, max_iterations: int = 20, on_tool_start=None) -> tuple[str, list]:
     """
     与 Claude 对话，自动处理工具调用
     
@@ -153,6 +153,7 @@ def chat(user_message, history: list = None, max_iterations: int = 20) -> tuple[
         user_message: 用户消息（字符串或包含图片的 list）
         history: 对话历史
         max_iterations: 最大工具调用循环次数
+        on_tool_start: 可选回调函数，工具开始执行时调用，参数为 (tool_name, tool_input)
     
     Returns:
         (回复文本, 更新后的历史)
@@ -202,6 +203,13 @@ def chat(user_message, history: list = None, max_iterations: int = 20) -> tuple[
             for tool_call in tool_calls:
                 print(f"🔧 执行工具: {tool_call.name}")
                 print(f"   参数: {tool_call.input}")
+                
+                # 通知外部（如 Telegram）
+                if on_tool_start:
+                    try:
+                        on_tool_start(tool_call.name, tool_call.input)
+                    except:
+                        pass  # 通知失败不影响执行
                 
                 result = tool_manager.execute(tool_call.name, tool_call.input)
                 

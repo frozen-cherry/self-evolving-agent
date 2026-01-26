@@ -273,13 +273,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 发送处理中提示
     thinking_message = await update.message.reply_text("🤔 思考中...")
     
+    # 工具执行状态（用于实时更新消息）
+    tool_status = {"current": "思考中..."}
+    
+    def on_tool_start(name, params):
+        """工具开始执行时的回调"""
+        # 生成简短的参数摘要
+        if name == "run_python":
+            # 代码太长，只显示前50字符
+            code = str(params.get("code", ""))[:50]
+            param_summary = f"`{code}...`"
+        elif name == "web_search":
+            param_summary = f"`{params.get('query', '')}`"
+        else:
+            param_summary = str(params)[:50]
+        
+        tool_status["current"] = f"🔧 {name}: {param_summary}"
+        
+        # 使用 asyncio 在事件循环中更新消息
+        asyncio.create_task(
+            thinking_message.edit_text(tool_status["current"], parse_mode='Markdown')
+        )
+    
     try:
         # 获取历史
         history = user_histories.get(user_id, [])
         
-        # 调用 Agent
+        # 调用 Agent（传入工具状态回调）
         logger.info(f"用户 {user_id}: {user_message[:50]}...")
-        response, new_history = chat(user_message, history)
+        response, new_history = await asyncio.get_event_loop().run_in_executor(
+            None, 
+            lambda: chat(user_message, history, on_tool_start=on_tool_start)
+        )
         
         # 更新历史（保留最近 N 轮）
         max_messages = MAX_HISTORY_ROUNDS * 2  # 每轮包含 user 和 assistant
