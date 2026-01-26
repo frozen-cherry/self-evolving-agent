@@ -1,0 +1,16 @@
+# Telegram Bot
+python-telegram-bot>=21.0
+
+# Claude API
+anthropic>=0.39.0
+
+# 网络搜索
+duckduckgo-search>=6.0.0
+
+# 常用工具库（AI 创建工具时可能用到）
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+aiohttp>=3.9.0
+
+# 语音识别（调用 OpenAI Whisper API）
+httpx>=0.27.0

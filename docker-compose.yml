@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  ai-bot:
+    build: .
+    container_name: self-evolving-ai
+    restart: always
+    volumes:
+      # 持久化自定义工具（这样重启后工具不会丢失）
+      - ./tools/_custom:/app/tools/_custom
+      # 如果需要修改配置，可以挂载配置文件
+      # - ./config.py:/app/config.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    # 如果需要网络访问（比如调用外部 API）
+    network_mode: bridge
