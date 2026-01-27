@@ -1,201 +1,178 @@
 # Self-Evolving AI Assistant
 
-一个可自我进化的 Telegram AI 助理。它可以：
+一个可自我进化的 Telegram AI 助理，基于 Claude 构建。
 
-- 联网搜索获取实时信息
-- 执行 Python 代码
-- **自动创建新工具来扩展自己的能力**
+## ✨ 核心特性
 
-## 快速开始
+- 🔍 **联网搜索** - 实时获取新闻、价格、事件等信息
+- 💻 **代码执行** - 运行 Python 代码进行计算、处理数据、调用 API
+- 🔧 **自我进化** - 自动创建新工具来扩展自己的能力
+- 🧠 **持久记忆** - 记住重要信息，跨对话保持上下文
+- 🔄 **远程更新** - 通过 Telegram 命令自动 git pull 并重启
+
+## 🚀 快速开始
 
 ### 1. 准备工作
 
 你需要：
 
-- Telegram Bot Token（从 @BotFather 获取）
-- Claude API Key（从 console.anthropic.com 获取）
-- 一台 VPS（2核4G 足够）
+- Telegram Bot Token（从 [@BotFather](https://t.me/BotFather) 获取）
+- Claude API Key（从 [Anthropic Console](https://console.anthropic.com) 获取）
+- Brave Search API Key（从 [Brave Search API](https://brave.com/search/api/) 获取，每月免费 2000 次）
+- 一台 VPS（Ubuntu 22.04，2核4G 足够）
 
-### 2. 配置
-
-复制配置模板并填入你的 API Keys：
+### 2. 部署
 
 ```bash
+# 克隆项目
+git clone https://github.com/frozen-cherry/self-evolving-agent.git
+cd self-evolving-agent
+
+# 复制配置模板
 cp config.example.py config.py
+
+# 编辑配置，填入你的 API Keys
+nano config.py
 ```
 
-然后编辑 `config.py`：
+配置文件说明：
 
 ```python
 TELEGRAM_TOKEN = "你的Telegram Bot Token"
 CLAUDE_API_KEY = "你的Claude API Key"
-BRAVE_API_KEY = "你的Brave Search API Key"  # https://brave.com/search/api/
+BRAVE_API_KEY = "你的Brave Search API Key"
 
-# 可选：限制允许使用的用户
-ALLOWED_USERS = []  # 空列表表示允许所有人
-# ALLOWED_USERS = [123456789]  # 只允许指定用户
+# 可选配置
+ALLOWED_USERS = []  # 限制允许使用的用户ID，空列表表示所有人
+CLAUDE_MODEL = "claude-sonnet-4-20250514"  # 默认模型
 ```
 
 ### 3. 运行
 
-**方式一：Docker（推荐）**
+**方式一：直接运行**
 
 ```bash
-# 构建并启动
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 停止
-docker compose down
-```
-
-**方式二：直接运行**
-
-```bash
-# 安装依赖
 pip install -r requirements.txt
-
-# 运行
 python bot.py
 ```
 
-## 使用方法
+**方式二：Docker（推荐生产环境）**
 
-### 基本命令
+```bash
+docker compose up -d
+docker compose logs -f  # 查看日志
+```
 
-- `/start` - 显示欢迎信息
-- `/help` - 显示帮助
-- `/reset` - 清除对话历史
-- `/tools` - 列出所有可用工具
-- `/reload` - 重新加载自定义工具
+## 📖 使用方法
+
+### 命令列表
+
+| 命令      | 功能                    |
+| --------- | ----------------------- |
+| `/start`  | 显示欢迎信息            |
+| `/help`   | 显示帮助                |
+| `/reset`  | 清除对话历史            |
+| `/tools`  | 列出所有可用工具        |
+| `/model`  | 切换模型（sonnet/opus） |
+| `/update` | 远程更新并重启 Bot      |
+| `/reload` | 重新加载自定义工具      |
 
 ### 示例对话
 
-**获取信息：**
+**🔍 实时信息查询**
 
 ```
-你：BTC 现在多少钱？
-Bot：[自动搜索或调用 API] BTC 当前价格是 $96,500...
+你：BTC 现在什么价格？
+Bot：[搜索] 当前 BTC 价格是 $96,500...
 ```
 
-**执行代码：**
+**💻 代码执行**
 
 ```
-你：帮我算一下 10000 美元年化 15% 复利 5 年是多少
-Bot：[执行 Python 代码] 计算结果是 $20,113.57
+你：帮我算一下 10000 美元年化 15% 复利 5 年后是多少
+Bot：[执行代码] 计算结果是 $20,113.57
 ```
 
-**自我扩展：**
+**🔧 自动创建工具**
 
 ```
-你：帮我创建一个获取 Binance BTC 价格的工具
-Bot：好的，我来创建这个工具...
-    ✅ 工具「get_btc_price」创建成功！
+你：创建一个获取 Binance 价格的工具
+Bot：✅ 工具「get_crypto_price」创建成功！
 
-你：BTC 价格多少？
-Bot：[调用 get_btc_price] 当前 BTC 价格是 $96,532.00
-```
-
-## 工具系统
-
-### 内置工具
-
-| 工具名         | 功能             |
-| -------------- | ---------------- |
-| web_search     | 联网搜索         |
-| run_python     | 执行 Python 代码 |
-| create_tool    | 创建新工具       |
-| list_tools     | 列出所有工具     |
-| view_tool_code | 查看工具代码     |
-| update_tool    | 更新工具         |
-| delete_tool    | 删除工具         |
-
-### 自定义工具
-
-AI 创建的工具会保存在 `tools/_custom/` 目录下：
-
-- `manifest.json` - 工具清单
-- `xxx.py` - 工具代码文件
-
-这些文件会被持久化，重启后依然可用。
-
-### 创建工具示例
-
-让 AI 创建一个获取加密货币价格的工具：
-
-```
-你：创建一个工具，可以获取任意加密货币在 Binance 的价格
-
-Bot：好的，我来创建这个工具...
-
-[AI 自动创建 get_crypto_price 工具，包含以下代码]
-
-import requests
-
-def run(symbol: str = "BTCUSDT"):
-    """获取加密货币价格"""
-    try:
-        resp = requests.get(
-            f"https://api.binance.com/api/v3/ticker/price",
-            params={"symbol": symbol.upper()},
-            timeout=10
-        )
-        data = resp.json()
-        return f"{symbol.upper()}: ${float(data['price']):,.2f}"
-    except Exception as e:
-        return f"获取失败: {str(e)}"
-```
-
-之后就可以直接使用：
-
-```
 你：ETH 价格多少？
-Bot：[调用 get_crypto_price(symbol="ETHUSDT")] ETHUSDT: $3,456.78
+Bot：[调用 get_crypto_price] ETHUSDT: $3,456.78
 ```
 
-## 目录结构
+**🧠 记忆功能**
+
+```
+你：记住我的 Solana 钱包地址是 xxx
+Bot：✅ 已记住 [wallet] solana_main
+
+你：我的 Solana 地址是什么？
+Bot：你的 Solana 钱包地址是 xxx
+```
+
+## 🔧 内置工具
+
+| 工具名           | 功能                     |
+| ---------------- | ------------------------ |
+| `web_search`     | 联网搜索（Brave Search） |
+| `run_python`     | 执行 Python 代码         |
+| `create_tool`    | 创建新工具               |
+| `update_tool`    | 更新工具代码             |
+| `delete_tool`    | 删除工具                 |
+| `list_tools`     | 列出所有工具             |
+| `view_tool_code` | 查看工具源码             |
+| `remember`       | 记住重要信息             |
+| `recall`         | 搜索记忆                 |
+| `list_memories`  | 列出所有记忆             |
+| `forget`         | 删除记忆                 |
+
+## 📁 项目结构
 
 ```
 self-evolving-agent/
 ├── bot.py              # Telegram Bot 入口
 ├── agent.py            # AI Agent 核心
 ├── tool_manager.py     # 工具管理器
-├── config.py           # 配置文件
+├── memory_manager.py   # 记忆管理器
+├── config.example.py   # 配置模板
 ├── requirements.txt    # Python 依赖
 ├── Dockerfile
 ├── docker-compose.yml
 └── tools/
-    ├── _builtin/       # 内置工具（代码在 tool_manager.py 中）
+    ├── _builtin/       # 内置工具
     └── _custom/        # AI 创建的自定义工具
         ├── manifest.json
         └── *.py
 ```
 
-## 安全说明
+## 🔒 安全说明
 
-1. **代码执行沙盒**：执行的代码有超时限制，且禁止危险操作（如 os.system）
-2. **用户白名单**：可以通过 `ALLOWED_USERS` 限制允许使用的用户
-3. **API Key 保护**：不要把 config.py 提交到公开仓库
+1. **代码执行沙盒**：Python 代码有超时限制（默认 30 秒），禁止危险操作
+2. **用户白名单**：通过 `ALLOWED_USERS` 限制允许使用的用户
+3. **配置保护**：`config.py` 已在 `.gitignore` 中，不会被提交
 
-## 常见问题
+## ❓ 常见问题
 
 **Q: Bot 没有响应？**
 
 - 检查 Telegram Token 是否正确
-- 检查网络是否能访问 Telegram API
-- 查看 Docker 日志：`docker compose logs -f`
+- 检查服务器是否能访问 Telegram API（可能需要代理）
+- 查看日志：`docker compose logs -f` 或 `~/self-evolving-agent/logs/bot.log`
 
-**Q: 工具创建失败？**
+**Q: 搜索功能不工作？**
 
-- AI 生成的代码可能有错误，查看错误信息
-- 可以让 AI 重新创建或手动修复代码
+- 确认已配置 `BRAVE_API_KEY`
+- Brave Search 免费版每月 2000 次，每秒 1 次限制
 
-**Q: 如何备份工具？**
+**Q: 如何备份？**
 
-- 备份 `tools/_custom/` 目录即可
+- 备份 `config.py`（配置）
+- 备份 `tools/_custom/`（自定义工具）
+- 备份 `~/self-evolving-agent/workspace/memory/`（记忆数据）
 
-## License
+## 📄 License
 
 MIT
