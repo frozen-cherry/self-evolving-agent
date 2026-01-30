@@ -17,7 +17,7 @@
 你需要：
 
 - Telegram Bot Token（从 [@BotFather](https://t.me/BotFather) 获取）
-- Claude API Key（从 [Anthropic Console](https://console.anthropic.com) 获取）
+- MiniMax API Key（从 [MiniMax Platform](https://platform.minimax.io) 获取）
 - Brave Search API Key（从 [Brave Search API](https://brave.com/search/api/) 获取，每月免费 2000 次）
 - 一台 VPS（Ubuntu 22.04，2核4G 足够）
 
@@ -39,12 +39,12 @@ nano config.py
 
 ```python
 TELEGRAM_TOKEN = "你的Telegram Bot Token"
-CLAUDE_API_KEY = "你的Claude API Key"
+MINIMAX_API_KEY = "你的MiniMax API Key"
 BRAVE_API_KEY = "你的Brave Search API Key"
 
 # 可选配置
 ALLOWED_USERS = []  # 限制允许使用的用户ID，空列表表示所有人
-CLAUDE_MODEL = "claude-sonnet-4-20250514"  # 默认模型
+MINIMAX_MODEL = "MiniMax-M2"  # 可选: MiniMax-M2, MiniMax-M2.1, MiniMax-M2.1-lightning
 ```
 
 ### 3. 运行

@@ -5,11 +5,12 @@
 # Telegram Bot Token (从 @BotFather 获取)
 TELEGRAM_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
-# Claude API Key (从 Anthropic Console 获取)
-CLAUDE_API_KEY = "YOUR_CLAUDE_API_KEY"
+# MiniMax API Key (从 https://platform.minimax.io 获取)
+MINIMAX_API_KEY = "YOUR_MINIMAX_API_KEY"
 
-# Claude 模型选择
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+# MiniMax 模型选择
+# 可选: MiniMax-M2 (推荐，Agentic), MiniMax-M2.1, MiniMax-M2.1-lightning
+MINIMAX_MODEL = "MiniMax-M2"
 
 # OpenAI API Key (用于语音识别，可选)
 # 如果不需要语音功能，留空即可

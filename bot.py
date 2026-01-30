@@ -202,7 +202,7 @@ async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"🤖 **当前模型:** `{current}`\n\n"
             f"**可用模型:** {available}\n\n"
-            f"**切换方法:** `/model sonnet` 或 `/model opus`",
+            f"**切换方法:** `/model m2` 或 `/model lightning`",
             parse_mode='Markdown'
         )
     else:

@@ -1,23 +1,27 @@
 """
-Agent 核心模块 - 负责与 Claude API 交互和工具调用循环
+Agent 核心模块 - 负责与 MiniMax API 交互和工具调用循环
 """
 
 import anthropic
 from tool_manager import tool_manager
 from memory_manager import memory_manager
-from config import CLAUDE_API_KEY, CLAUDE_MODEL
+from config import MINIMAX_API_KEY, MINIMAX_MODEL
 
-# 初始化 Claude 客户端
-client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+# 初始化 MiniMax 客户端（使用 Anthropic 兼容接口）
+client = anthropic.Anthropic(
+    api_key=MINIMAX_API_KEY,
+    base_url="https://api.minimax.io/anthropic"
+)
 
 # 可用模型列表
 AVAILABLE_MODELS = {
-    "sonnet": "claude-sonnet-4-20250514",
-    "opus": "claude-opus-4-20250514",
+    "m2": "MiniMax-M2",
+    "m2.1": "MiniMax-M2.1",
+    "lightning": "MiniMax-M2.1-lightning",
 }
 
 # 当前使用的模型（默认从配置读取）
-_current_model = CLAUDE_MODEL
+_current_model = MINIMAX_MODEL
 
 def get_current_model() -> str:
     """获取当前模型"""
