@@ -775,7 +775,7 @@ class ToolManager:
             max_runs = t.get("max_runs", 0)
             runs_text = f"{t['run_count']}/{max_runs}" if max_runs > 0 else f"{t['run_count']}/∞"
             lines.append(f"{status} `{t['id']}` | {t['cron']} | {runs_text}")
-            lines.append(f"   📝 {t['prompt'][:40]}...")
+            lines.append(f"   📝 {t['prompt']}")
             lines.append(f"   ⏭️ 下次: {t['next_run'][:16]}")
             lines.append("")
         
