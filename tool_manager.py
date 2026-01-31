@@ -299,7 +299,78 @@ class ToolManager:
             "function": self._forget,
             "is_builtin": True
         }
-    
+        
+        # 12. 创建定时任务
+        self.tools["create_scheduled_task"] = {
+            "schema": {
+                "name": "create_scheduled_task",
+                "description": "创建一个定时任务，让 AI 在指定时间自动执行某个任务。使用 cron 表达式指定执行时间。常见格式：'* * * * *' (分 时 日 月 周)。例如 '0 9 * * *' 表示每天9点，'*/10 * * * *' 表示每10分钟，'0 9 * * 1' 表示每周一9点。",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "cron": {
+                            "type": "string",
+                            "description": "Cron 表达式，格式：分钟 小时 日 月 星期。例如 '0 9 * * *' 表示每天早上9点"
+                        },
+                        "prompt": {
+                            "type": "string",
+                            "description": "任务执行时的提示语，描述要做什么。这是 AI 被唤醒时收到的指令"
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "Telegram 用户 ID，任务结果将发送给此用户"
+                        },
+                        "max_runs": {
+                            "type": "integer",
+                            "description": "最大执行次数。0 表示无限循环，1 表示只执行一次，大于1表示执行指定次数后停止"
+                        }
+                    },
+                    "required": ["cron", "prompt", "user_id"]
+                }
+            },
+            "function": self._create_scheduled_task,
+            "is_builtin": True
+        }
+        
+        # 13. 列出定时任务
+        self.tools["list_scheduled_tasks"] = {
+            "schema": {
+                "name": "list_scheduled_tasks",
+                "description": "列出所有定时任务",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "可选，只列出指定用户的任务"
+                        }
+                    }
+                }
+            },
+            "function": self._list_scheduled_tasks,
+            "is_builtin": True
+        }
+        
+        # 14. 删除定时任务
+        self.tools["delete_scheduled_task"] = {
+            "schema": {
+                "name": "delete_scheduled_task",
+                "description": "删除一个定时任务",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {
+                            "type": "string",
+                            "description": "任务ID"
+                        }
+                    },
+                    "required": ["task_id"]
+                }
+            },
+            "function": self._delete_scheduled_task,
+            "is_builtin": True
+        }
+
     def _load_custom_tools(self):
         """从 manifest 加载所有自定义工具"""
         if not MANIFEST_FILE.exists():
@@ -671,6 +742,51 @@ class ToolManager:
         """删除记忆"""
         from memory_manager import memory_manager
         return memory_manager.forget(category, key)
+    
+    # ========== 定时任务工具实现 ==========
+    
+    def _create_scheduled_task(self, cron: str, prompt: str, user_id: int, max_runs: int = 0) -> str:
+        """创建定时任务"""
+        from scheduler import scheduler
+        try:
+            task = scheduler.create_task(cron, prompt, user_id, max_runs)
+            max_runs_text = f"执行 {max_runs} 次后停止" if max_runs > 0 else "无限循环"
+            return f"""✅ 定时任务创建成功！
+
+📋 **任务ID**: `{task['id']}`
+⏰ **执行时间**: `{task['cron']}`
+📝 **任务内容**: {task['prompt'][:50]}...
+🔁 **重复**: {max_runs_text}
+⏭️ **下次执行**: {task['next_run']}"""
+        except Exception as e:
+            return f"❌ 创建任务失败: {str(e)}"
+    
+    def _list_scheduled_tasks(self, user_id: int = None) -> str:
+        """列出定时任务"""
+        from scheduler import scheduler
+        tasks = scheduler.list_tasks(user_id)
+        
+        if not tasks:
+            return "📭 没有定时任务"
+        
+        lines = ["📋 **定时任务列表**\n"]
+        for t in tasks:
+            status = "✅" if t.get("enabled", True) else "⏸️"
+            max_runs = t.get("max_runs", 0)
+            runs_text = f"{t['run_count']}/{max_runs}" if max_runs > 0 else f"{t['run_count']}/∞"
+            lines.append(f"{status} `{t['id']}` | {t['cron']} | {runs_text}")
+            lines.append(f"   📝 {t['prompt'][:40]}...")
+            lines.append(f"   ⏭️ 下次: {t['next_run'][:16]}")
+            lines.append("")
+        
+        return "\n".join(lines)
+    
+    def _delete_scheduled_task(self, task_id: str) -> str:
+        """删除定时任务"""
+        from scheduler import scheduler
+        if scheduler.delete_task(task_id):
+            return f"✅ 任务 `{task_id}` 已删除"
+        return f"❌ 未找到任务 `{task_id}`"
     
     # ========== 对外接口 ==========
     

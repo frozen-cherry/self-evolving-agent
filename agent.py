@@ -10,7 +10,7 @@ from config import MINIMAX_API_KEY, MINIMAX_MODEL
 # 初始化 MiniMax 客户端（使用 Anthropic 兼容接口）
 client = anthropic.Anthropic(
     api_key=MINIMAX_API_KEY,
-    base_url="https://api.minimax.io/anthropic"
+    base_url="https://api.minimaxi.com/anthropic"
 )
 
 # 可用模型列表
@@ -53,6 +53,7 @@ SYSTEM_PROMPT_BASE = """你是一个强大的、可自我进化的 AI 助理。
 3. **自我扩展** - 当发现缺少某个能力时，可以创建新工具来扩展自己
 4. **后台任务** - 可以启动、管理、停止后台运行的监控脚本
 5. **记忆系统** - 可以记住重要信息，下次对话时自动回忆
+6. **定时任务** - 可以创建定时任务，在指定时间自动唤醒执行
 
 ## 关于记忆
 

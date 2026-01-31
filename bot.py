@@ -21,6 +21,7 @@ from telegram.constants import ChatAction
 from agent import chat, get_current_model, set_model, AVAILABLE_MODELS
 from tool_manager import tool_manager
 from config import TELEGRAM_TOKEN, ALLOWED_USERS, MAX_HISTORY_ROUNDS
+from scheduler import scheduler
 
 
 async def download_image_as_base64(photo, context) -> tuple[str, str]:
@@ -493,12 +494,74 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# 全局Application引用（供调度器使用）
+_application = None
+
+
+def execute_scheduled_task(task: dict):
+    """执行定时任务的回调函数（在调度器线程中调用）"""
+    import asyncio
+    
+    task_id = task["id"]
+    user_id = task["user_id"]
+    prompt = task["prompt"]
+    run_count = task.get("run_count", 0) + 1
+    max_runs = task.get("max_runs", 0)
+    
+    # 构造唤醒提示
+    max_runs_info = f"最大次数: {max_runs}" if max_runs > 0 else "无限循环"
+    wake_prompt = f"""[定时任务自动触发]
+
+任务ID: {task_id}
+执行次数: 第 {run_count} 次
+{max_runs_info}
+
+任务内容：
+{prompt}
+
+请直接执行任务并返回结果。"""
+    
+    logger.info(f"执行定时任务 {task_id} (用户 {user_id})")
+    
+    try:
+        # 调用 Agent
+        response, _ = chat(wake_prompt, [])
+        
+        # 发送结果给用户
+        if _application:
+            async def send_result():
+                try:
+                    await _application.bot.send_message(
+                        chat_id=user_id,
+                        text=f"⏰ **定时任务执行结果**\n\n{response[:4000]}",
+                        parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    logger.error(f"发送任务结果失败: {e}")
+            
+            # 在事件循环中执行
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.run_coroutine_threadsafe(send_result(), loop)
+            else:
+                asyncio.run(send_result())
+    except Exception as e:
+        logger.error(f"执行定时任务失败: {e}")
+
+
 def main():
     """主函数"""
+    global _application
     print("🚀 启动 Self-Evolving AI Bot...")
     
     # 创建 Application
     application = Application.builder().token(TELEGRAM_TOKEN).build()
+    _application = application
+    
+    # 启动定时任务调度器
+    scheduler.set_execute_callback(execute_scheduled_task)
+    scheduler.start()
+    print("⏰ 定时任务调度器已启动")
     
     # 添加命令处理器
     application.add_handler(CommandHandler("start", start_command))
