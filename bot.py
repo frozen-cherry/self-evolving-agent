@@ -458,7 +458,11 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_long_message(update: Update, text: str, max_length: int = 4000):
     """发送长消息（自动分段）"""
     if len(text) <= max_length:
-        await update.message.reply_text(text, parse_mode='Markdown')
+        try:
+            await update.message.reply_text(text, parse_mode='Markdown')
+        except Exception:
+            # Markdown 解析失败时用纯文本
+            await update.message.reply_text(text)
         return
     
     # 分段发送
