@@ -1,1 +1,173 @@
-{}
+{
+  "send_tg_notify": {
+    "description": "通过 tg-notify 服务发送 Telegram 消息通知",
+    "parameters": {
+      "properties": {
+        "message": {
+          "description": "要发送的消息内容",
+          "type": "string"
+        },
+        "priority": {
+          "default": "normal",
+          "description": "消息优先级: normal/high/critical",
+          "type": "string"
+        },
+        "title": {
+          "description": "消息标题",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "type": "object"
+    },
+    "created_at": "2026-01-31T04:01:15.339233",
+    "updated_at": "2026-01-31T04:01:45.521588"
+  },
+  "moltbook_analytics": {
+    "description": "分析Moltbook平台内容，提供可执行的运营策略建议",
+    "parameters": {
+      "description": "分析类型：content_trends（内容趋势分析）",
+      "properties": {
+        "analysis_type": {
+          "description": "分析类型：content_trends（内容趋势分析）",
+          "type": "string"
+        },
+        "feed_input": {
+          "description": "moltbook_feed工具的输出内容，用于解析分析",
+          "type": "string"
+        },
+        "max_posts": {
+          "description": "分析的最大帖子数量",
+          "type": "number"
+        }
+      },
+      "required": [
+        "analysis_type"
+      ],
+      "type": "object"
+    },
+    "created_at": "2026-01-31T15:38:13.683631",
+    "updated_at": "2026-01-31T15:52:34.265933"
+  },
+  "moltbook_feed": {
+    "description": "获取Moltbook真实Feed数据，支持热门/最新/最赞/上升排序",
+    "parameters": {
+      "properties": {
+        "limit": {
+          "default": 25,
+          "description": "返回帖子数量",
+          "type": "number"
+        },
+        "personalized": {
+          "default": false,
+          "description": "是否获取个性化订阅流",
+          "type": "boolean"
+        },
+        "sort": {
+          "default": "hot",
+          "description": "排序方式: hot(热门), new(最新), top(最赞), rising(上升)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "created_at": "2026-01-31T15:33:21.720621",
+    "updated_at": "2026-01-31T15:47:27.289793"
+  },
+  "moltbook_post": {
+    "description": "在Moltbook平台发帖，支持文字帖子和链接帖子",
+    "parameters": {
+      "properties": {
+        "content": {
+          "description": "帖子内容（文字帖子时使用）",
+          "type": "string"
+        },
+        "submolt": {
+          "description": "社区名称（默认general）",
+          "type": "string"
+        },
+        "title": {
+          "description": "帖子标题（必填）",
+          "type": "string"
+        },
+        "url": {
+          "description": "链接（链接帖子时使用）",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "type": "object"
+    },
+    "created_at": "2026-02-01T00:27:19.902140",
+    "updated_at": "2026-02-01T00:27:19.902150"
+  },
+  "moltbook_upvote": {
+    "description": "点赞/踩Moltbook帖子或评论",
+    "parameters": {
+      "properties": {
+        "action": {
+          "default": "upvote",
+          "description": "操作: upvote(点赞) 或 downvote(踩)",
+          "type": "string"
+        },
+        "post_id": {
+          "description": "帖子ID（点赞帖子时使用）",
+          "type": "string"
+        },
+        "comment_id": {
+          "description": "评论ID（点赞评论时使用）",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "created_at": "2026-01-31T15:34:05.202747",
+    "updated_at": "2026-02-01T08:35:00.000000"
+  },
+  "moltbook_comment": {
+    "description": "评论Moltbook帖子或回复评论",
+    "parameters": {
+      "properties": {
+        "content": {
+          "description": "评论内容",
+          "type": "string"
+        },
+        "parent_id": {
+          "default": "",
+          "description": "父评论ID（回复评论时使用）",
+          "type": "string"
+        },
+        "post_id": {
+          "description": "帖子ID",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "created_at": "2026-01-31T15:34:28.672053",
+    "updated_at": "2026-01-31T15:34:28.672067"
+  },
+  "moltbook_follow": {
+    "description": "关注/取消关注Moltbook用户",
+    "parameters": {
+      "properties": {
+        "action": {
+          "default": "follow",
+          "description": "操作: follow(关注) 或 unfollow(取消关注)",
+          "type": "string"
+        },
+        "username": {
+          "description": "用户名",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "created_at": "2026-01-31T15:34:47.154973",
+    "updated_at": "2026-01-31T16:01:29.844673"
+  }
+}
