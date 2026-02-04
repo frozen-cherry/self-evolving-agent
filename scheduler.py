@@ -1,5 +1,6 @@
 """
 定时任务调度器 - 负责管理和执行定时任务
+支持两种任务类型：agent（唤醒AI）和 script（执行脚本）
 """
 
 import json
@@ -7,6 +8,7 @@ import os
 import logging
 import threading
 import time
+import subprocess
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Callable
 from croniter import croniter
@@ -19,7 +21,10 @@ TZ_OFFSET = timedelta(hours=8)
 TZ = timezone(TZ_OFFSET)
 
 # 任务存储路径
-TASKS_FILE = os.path.join(os.path.dirname(__file__), "workspace", "scheduled_tasks.json")
+BASE_DIR = os.path.dirname(__file__)
+WORKSPACE_DIR = os.path.join(BASE_DIR, "workspace")
+TASKS_FILE = os.path.join(WORKSPACE_DIR, "scheduled_tasks.json")
+LOGS_DIR = os.path.join(WORKSPACE_DIR, "scheduler_logs")
 
 
 class Scheduler:
@@ -63,12 +68,31 @@ class Scheduler:
         next_run = cron.get_next(datetime)
         return next_run.isoformat()
     
-    def create_task(self, cron: str, prompt: str, user_id: int, max_runs: int = 0) -> dict:
-        """创建定时任务"""
+    def create_task(self, cron: str, user_id: int, task_type: str = "agent", 
+                     prompt: str = None, command: str = None, max_runs: int = 0) -> dict:
+        """
+        创建定时任务
+        
+        Args:
+            cron: cron 表达式
+            user_id: 用户 ID
+            task_type: 任务类型 - agent(唤醒AI) 或 script(执行脚本)
+            prompt: AI 唤醒提示（agent 类型必填）
+            command: 要执行的命令（script 类型必填）
+            max_runs: 最大执行次数，0 表示无限
+        """
+        # 验证参数
+        if task_type == "agent" and not prompt:
+            raise ValueError("agent 类型任务必须提供 prompt")
+        if task_type == "script" and not command:
+            raise ValueError("script 类型任务必须提供 command")
+        
         task = {
             "id": str(uuid.uuid4())[:8],
+            "type": task_type,
             "cron": cron,
             "prompt": prompt,
+            "command": command,
             "max_runs": max_runs,
             "run_count": 0,
             "user_id": user_id,
@@ -82,7 +106,8 @@ class Scheduler:
             self._tasks.append(task)
             self._save_tasks()
         
-        logger.info(f"创建定时任务: {task['id']} - {prompt[:30]}")
+        task_desc = prompt[:30] if prompt else command[:30]
+        logger.info(f"创建定时任务: {task['id']} [{task_type}] - {task_desc}")
         return task
     
     def list_tasks(self, user_id: Optional[int] = None) -> list:
@@ -164,12 +189,17 @@ class Scheduler:
     def _execute_task(self, task: dict):
         """执行单个任务"""
         task_id = task["id"]
-        logger.info(f"执行定时任务: {task_id}")
+        task_type = task.get("type", "agent")  # 向后兼容
+        logger.info(f"执行定时任务: {task_id} [{task_type}]")
         
         try:
-            # 调用回调执行任务
-            if self._on_task_execute:
-                self._on_task_execute(task)
+            if task_type == "script":
+                # 执行脚本任务
+                self._execute_script(task)
+            else:
+                # 执行 agent 任务（调用回调）
+                if self._on_task_execute:
+                    self._on_task_execute(task)
             
             # 更新任务状态
             with self._lock:
@@ -193,6 +223,47 @@ class Scheduler:
                 
         except Exception as e:
             logger.error(f"执行任务 {task_id} 失败: {e}")
+    
+    def _execute_script(self, task: dict):
+        """执行脚本任务（异步子进程）"""
+        task_id = task["id"]
+        command = task.get("command", "")
+        
+        if not command:
+            logger.error(f"任务 {task_id} 缺少 command")
+            return
+        
+        # 确保日志目录存在
+        os.makedirs(LOGS_DIR, exist_ok=True)
+        
+        # 日志文件
+        timestamp = datetime.now(TZ).strftime("%Y%m%d_%H%M%S")
+        log_file = os.path.join(LOGS_DIR, f"{task_id}_{timestamp}.log")
+        
+        try:
+            # 异步执行，不等待完成
+            with open(log_file, 'w', encoding='utf-8') as f:
+                f.write(f"=== Task: {task_id} ===\n")
+                f.write(f"Command: {command}\n")
+                f.write(f"Started: {datetime.now(TZ).isoformat()}\n")
+                f.write("=" * 40 + "\n\n")
+            
+            # 追加模式打开日志文件
+            log_handle = open(log_file, 'a', encoding='utf-8')
+            
+            subprocess.Popen(
+                command,
+                shell=True,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                cwd=WORKSPACE_DIR,
+                start_new_session=True  # 独立进程组
+            )
+            
+            logger.info(f"脚本任务 {task_id} 已启动，日志: {log_file}")
+            
+        except Exception as e:
+            logger.error(f"启动脚本任务 {task_id} 失败: {e}")
 
 
 # 全局调度器实例

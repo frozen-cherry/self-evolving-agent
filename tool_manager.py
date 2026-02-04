@@ -328,28 +328,40 @@ class ToolManager:
         self.tools["create_scheduled_task"] = {
             "schema": {
                 "name": "create_scheduled_task",
-                "description": "创建一个定时任务，让 AI 在指定时间自动执行某个任务。使用 cron 表达式指定执行时间。常见格式：'* * * * *' (分 时 日 月 周)。例如 '0 9 * * *' 表示每天9点，'*/10 * * * *' 表示每10分钟，'0 9 * * 1' 表示每周一9点。",
+                "description": """创建定时任务。支持两种类型：
+- agent: 唤醒 AI 执行任务（默认，需提供 prompt）
+- script: 执行脚本命令（需提供 command）
+
+Cron 表达式格式：'分 时 日 月 周'。例如 '0 9 * * *' 表示每天 9 点。""",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "cron": {
                             "type": "string",
-                            "description": "Cron 表达式，格式：分钟 小时 日 月 星期。例如 '0 9 * * *' 表示每天早上9点"
-                        },
-                        "prompt": {
-                            "type": "string",
-                            "description": "任务执行时的提示语，描述要做什么。这是 AI 被唤醒时收到的指令"
+                            "description": "Cron 表达式，例如 '0 9 * * *' 表示每天早上9点"
                         },
                         "user_id": {
                             "type": "integer",
-                            "description": "Telegram 用户 ID，任务结果将发送给此用户"
+                            "description": "Telegram 用户 ID"
+                        },
+                        "type": {
+                            "type": "string",
+                            "description": "任务类型: agent(唤醒AI) 或 script(执行脚本)，默认 agent"
+                        },
+                        "prompt": {
+                            "type": "string",
+                            "description": "agent 类型：AI 唤醒时的指令"
+                        },
+                        "command": {
+                            "type": "string",
+                            "description": "script 类型：要执行的 shell 命令"
                         },
                         "max_runs": {
                             "type": "integer",
-                            "description": "最大执行次数。0 表示无限循环，1 表示只执行一次，大于1表示执行指定次数后停止"
+                            "description": "最大执行次数，0 表示无限循环"
                         }
                     },
-                    "required": ["cron", "prompt", "user_id"]
+                    "required": ["cron", "user_id"]
                 }
             },
             "function": self._create_scheduled_task,
@@ -823,21 +835,36 @@ class ToolManager:
     
     # ========== 定时任务工具实现 ==========
     
-    def _create_scheduled_task(self, cron: str, prompt: str, user_id: int, max_runs: int = 0) -> str:
+    def _create_scheduled_task(self, cron: str, user_id: int, type: str = "agent",
+                                prompt: str = None, command: str = None, max_runs: int = 0) -> str:
         """创建定时任务"""
         from scheduler import scheduler
         try:
-            task = scheduler.create_task(cron, prompt, user_id, max_runs)
+            task = scheduler.create_task(
+                cron=cron,
+                user_id=user_id,
+                task_type=type,
+                prompt=prompt,
+                command=command,
+                max_runs=max_runs
+            )
+            
             max_runs_text = f"执行 {max_runs} 次后停止" if max_runs > 0 else "无限循环"
-            return f"""✅ 定时任务创建成功！
+            task_desc = prompt[:50] if prompt else command[:50]
+            type_emoji = "🤖" if type == "agent" else "📜"
+            
+            return f"""\u2705 定时任务创建成功！
 
 📋 **任务ID**: `{task['id']}`
-⏰ **执行时间**: `{task['cron']}`
-📝 **任务内容**: {task['prompt'][:50]}...
+{type_emoji} **类型**: {type}
+\u23f0 **执行时间**: `{task['cron']}`
+📝 **任务内容**: {task_desc}...
 🔁 **重复**: {max_runs_text}
-⏭️ **下次执行**: {task['next_run']}"""
+\u23ed\ufe0f **下次执行**: {task['next_run']}"""
+        except ValueError as e:
+            return f"\u274c 参数错误: {str(e)}"
         except Exception as e:
-            return f"❌ 创建任务失败: {str(e)}"
+            return f"\u274c 创建任务失败: {str(e)}"
     
     def _list_scheduled_tasks(self, user_id: int = None) -> str:
         """列出定时任务"""
@@ -849,12 +876,21 @@ class ToolManager:
         
         lines = ["📋 **定时任务列表**\n"]
         for t in tasks:
-            status = "✅" if t.get("enabled", True) else "⏸️"
+            status = "\u2705" if t.get("enabled", True) else "\u23f8\ufe0f"
+            task_type = t.get("type", "agent")
+            type_emoji = "🤖" if task_type == "agent" else "📜"
             max_runs = t.get("max_runs", 0)
-            runs_text = f"{t['run_count']}/{max_runs}" if max_runs > 0 else f"{t['run_count']}/∞"
-            lines.append(f"{status} `{t['id']}` | {t['cron']} | {runs_text}")
-            lines.append(f"   📝 {t['prompt']}")
-            lines.append(f"   ⏭️ 下次: {t['next_run'][:16]}")
+            runs_text = f"{t['run_count']}/{max_runs}" if max_runs > 0 else f"{t['run_count']}/\u221e"
+            
+            lines.append(f"{status} `{t['id']}` {type_emoji} | {t['cron']} | {runs_text}")
+            
+            # 根据类型显示不同内容
+            if task_type == "script":
+                lines.append(f"   📜 {t.get('command', 'N/A')}")
+            else:
+                lines.append(f"   📝 {t.get('prompt', 'N/A')}")
+            
+            lines.append(f"   \u23ed\ufe0f 下次: {t['next_run'][:16]}")
             lines.append("")
         
         return "\n".join(lines)
@@ -863,8 +899,8 @@ class ToolManager:
         """删除定时任务"""
         from scheduler import scheduler
         if scheduler.delete_task(task_id):
-            return f"✅ 任务 `{task_id}` 已删除"
-        return f"❌ 未找到任务 `{task_id}`"
+            return f"\u2705 任务 `{task_id}` 已删除"
+        return f"\u274c 未找到任务 `{task_id}`"
     
     # ========== 对外接口 ==========
     
