@@ -73,6 +73,30 @@ class ToolManager:
             "is_builtin": True
         }
         
+        # 2.5 执行 Bash 命令
+        self.tools["run_bash"] = {
+            "schema": {
+                "name": "run_bash",
+                "description": "执行 Bash/Shell 命令。用于文件操作、系统管理、运行脚本等。",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "要执行的 bash 命令"
+                        },
+                        "cwd": {
+                            "type": "string",
+                            "description": "工作目录（可选，默认为 ~/self-evolving-agent/workspace）"
+                        }
+                    },
+                    "required": ["command"]
+                }
+            },
+            "function": self._run_bash,
+            "is_builtin": True
+        }
+        
         # 3. 创建新工具（元工具）
         self.tools["create_tool"] = {
             "schema": {
@@ -545,6 +569,60 @@ class ToolManager:
                 os.unlink(temp_file)
             except:
                 pass
+    
+    def _run_bash(self, command: str, cwd: str = None) -> str:
+        """执行 Bash 命令"""
+        import subprocess
+        from config import CODE_TIMEOUT
+        
+        # 默认工作目录
+        if not cwd:
+            cwd = os.path.expanduser("~/self-evolving-agent/workspace")
+        else:
+            cwd = os.path.expanduser(cwd)
+        
+        # 确保目录存在
+        os.makedirs(cwd, exist_ok=True)
+        
+        # 安全检查
+        dangerous_patterns = [
+            "rm -rf /",
+            "rm -rf /*",
+            "> /dev/sda",
+            "mkfs.",
+            "dd if=",
+            ":(){:|:&};:",  # fork bomb
+        ]
+        
+        for pattern in dangerous_patterns:
+            if pattern in command:
+                return f"❌ 安全限制：命令包含禁止的操作 ({pattern})"
+        
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=CODE_TIMEOUT,
+                cwd=cwd
+            )
+            
+            output = ""
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += f"\n[STDERR]\n{result.stderr}"
+            
+            if result.returncode != 0:
+                output += f"\n[Exit Code: {result.returncode}]"
+            
+            return output.strip() if output.strip() else "✅ 命令执行完成，无输出"
+        
+        except subprocess.TimeoutExpired:
+            return f"❌ 执行超时（{CODE_TIMEOUT}秒）"
+        except Exception as e:
+            return f"❌ 执行错误: {str(e)}"
     
     def _create_tool(self, name: str, description: str, parameters: dict, code: str) -> str:
         """创建新的自定义工具"""
